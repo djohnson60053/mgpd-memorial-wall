@@ -1,279 +1,108 @@
 
-"""ODMP memorial wall updater.
+"""MGPD ODMP Memorial Wall daily updater.
 
-Collects the first 10 officer memorials from the ODMP homepage.
-Preserves existing data if retrieval or validation fails.
+Reads the first 10 officer cards from the ODMP homepage.
+Does not invent officer information.
+Preserves the existing feed if an update fails.
 
-Use only where automated access and image reuse are permitted.
+Confirm ODMP permission before automated use or redistribution.
 """
 
-import hashlib
 import json
 import re
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
-import requests
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 
 BASE = "https://www.odmp.org/"
 OUT = Path("docs")
 DATA = OUT / "memorials.json"
-IMAGES = OUT / "images"
 
 OUT.mkdir(parents=True, exist_ok=True)
-IMAGES.mkdir(parents=True, exist_ok=True)
 
 
-def text(node):
-    return node.get_text(" ", strip=True) if node else ""
+def clean(element):
+    if element is None:
+        return ""
+    return element.get_text(" ", strip=True)
 
 
-def officer_url(href):
-    if not href:
-        return None
+def valid_photo(url):
+    if not url:
+        return ""
 
-    url = urljoin(BASE, href.split("#")[0])
+    url = urljoin(BASE, url)
     parsed = urlparse(url)
 
-    if parsed.netloc not in ("www.odmp.org", "odmp.org"):
-        return None
+    if parsed.scheme != "https":
+        return ""
 
-    if re.match(r"^/officer/\d+(?:/|$)", parsed.path):
-        return url
+    if parsed.netloc not in ("odmp.org", "www.odmp.org"):
+        return ""
 
-    return None
+    return url
 
 
-def browse(page, url):
-    response = page.goto(
-        url,
-        wait_until="domcontentloaded",
-        timeout=45000
-    )
+def collect_cards(soup):
+    """Read officer cards in their homepage DOM order."""
 
-    page.wait_for_timeout(5000)
+    records = []
+    seen = set()
 
-    if response and response.status >= 400:
-        raise RuntimeError(
-            f"ODMP returned HTTP {response.status} at {url}"
+    for card in soup.select("app-officercard"):
+        name = clean(card.select_one(".rank-name"))
+        agency = clean(card.select_one(".agency"))
+        eow = clean(card.select_one(".eow-date"))
+
+        image = card.select_one(
+            ".card-image-container img"
         )
 
-    return BeautifulSoup(page.content(), "html.parser")
-
-
-def homepage_links(soup):
-    candidates = []
-
-    for node in soup.select("section, main, div"):
-        heading = node.find(["h1", "h2", "h3"])
-
-        label = " ".join([
-            str(node.get("id", "")),
-            " ".join(node.get("class", [])),
-            text(heading)
-        ]).lower()
-
-        if any(term in label for term in (
-            "recent",
-            "latest",
-            "fallen officers",
-            "recently fallen"
-        )):
-            links = [
-                officer_url(a.get("href"))
-                for a in node.select("a[href]")
-            ]
-
-            links = list(dict.fromkeys(
-                url for url in links if url
-            ))
-
-            if len(links) >= 10:
-                candidates.append((len(links), links))
-
-    if candidates:
-        return sorted(
-            candidates,
-            key=lambda item: item[0]
-        )[0][1][:10]
-
-    links = [
-        officer_url(a.get("href"))
-        for a in soup.select("a[href]")
-    ]
-
-    return list(dict.fromkeys(
-        url for url in links if url
-    ))[:10]
-
-
-def meta(soup, key, attr="property"):
-    tag = soup.find("meta", attrs={attr: key})
-    return (tag.get("content") or "").strip() if tag else ""
-
-
-def extract(page, url):
-    soup = browse(page, url)
-
-    heading = soup.find("h1")
-    name = text(heading) or meta(soup, "og:title")
-
-    name = re.sub(
-        r"\s*[-|]\s*Officer Down Memorial Page.*$",
-        "",
-        name,
-        flags=re.I
-    ).strip()
-
-    agency = ""
-
-    for element in soup.select(
-        '[class*="agency"], '
-        '[class*="department"], '
-        '[data-testid*="agency"]'
-    ):
-        value = text(element)
-
-        if 4 < len(value) < 180:
-            agency = value
-            break
-
-    full_text = text(soup)
-
-    match = re.search(
-        r"(?:End of Watch|EOW)\s*[:\-]?\s*"
-        r"(?:(?:Monday|Tuesday|Wednesday|Thursday|Friday|"
-        r"Saturday|Sunday),?\s*)?"
-        r"(?:January|February|March|April|May|June|July|"
-        r"August|September|October|November|December)"
-        r"\s+\d{1,2},?\s+\d{4}",
-        full_text,
-        re.I
-    )
-
-    eow = ""
-
-    if match:
-        eow = re.sub(
-            r"^(?:End of Watch|EOW)\s*[:\- ]*",
-            "",
-            match.group(0),
-            flags=re.I
-        ).strip()
-
-    photo = meta(soup, "og:image")
-
-    if not photo:
-        image = soup.select_one("main img, article img")
+        photo = ""
 
         if image:
-            photo = (
+            photo = valid_photo(
                 image.get("src")
                 or image.get("data-src")
                 or ""
             )
 
-    photo = urljoin(BASE, photo) if photo else ""
+        if not (name and agency and eow and photo):
+            continue
 
-    story = ""
+        # Use the officer's photograph URL as a unique key.
+        # The carousel may contain duplicate cards.
+        officer_id = photo
 
-    for element in soup.select(
-        '[class*="bio"], '
-        '[class*="incident"], '
-        '[class*="narrative"], '
-        "article p, main p"
-    ):
-        value = text(element)
+        if officer_id in seen:
+            continue
 
-        if (
-            len(value) > 90
-            and not any(term in value.lower() for term in (
-                "cookie policy",
-                "privacy policy",
-                "sign up"
-            ))
-        ):
-            story = value[:520]
+        seen.add(officer_id)
 
-            if len(value) > 520:
-                story = story.rsplit(" ", 1)[0] + "…"
+        records.append({
+            "name": name,
+            "agency": agency,
+            "eow": eow,
+            "photo": photo,
+            "story": (
+                "We honor this officer's life, "
+                "service, and sacrifice. "
+                "Visit ODMP.org for the full memorial."
+            ),
+            "url": BASE
+        })
 
+        if len(records) == 10:
             break
 
-    if not (name and agency and eow):
-        raise ValueError(
-            f"Incomplete officer record: {url}. "
-            f"Name={bool(name)}, "
-            f"Agency={bool(agency)}, "
-            f"EOW={bool(eow)}"
-        )
-
-    return {
-        "name": name,
-        "agency": agency,
-        "eow": eow,
-        "story": story or (
-            "Read the full memorial at ODMP.org."
-        ),
-        "photo": photo,
-        "url": url
-    }
-
-
-def save_image(session, record):
-    url = record.get("photo")
-
-    if not url:
-        return
-
-    if urlparse(url).netloc not in (
-        "www.odmp.org",
-        "odmp.org"
-    ):
-        return
-
-    try:
-        response = session.get(url, timeout=15)
-        response.raise_for_status()
-
-        mime = response.headers.get(
-            "content-type", ""
-        ).split(";")[0]
-
-        extension = {
-            "image/jpeg": ".jpg",
-            "image/png": ".png",
-            "image/webp": ".webp"
-        }.get(mime)
-
-        if not extension:
-            return
-
-        if len(response.content) > 5_000_000:
-            return
-
-        filename = (
-            hashlib.sha256(
-                record["url"].encode()
-            ).hexdigest()[:18]
-            + extension
-        )
-
-        (IMAGES / filename).write_bytes(
-            response.content
-        )
-
-        record["photo"] = "images/" + filename
-
-    except requests.RequestException as error:
-        print("Image unavailable:", error)
+    return records
 
 
 def save_diagnostics(page, reason):
-    print("ODMP diagnostic:", reason)
+    print("DIAGNOSTIC:", reason)
     print("Current URL:", page.url)
 
     try:
@@ -296,7 +125,35 @@ def save_diagnostics(page, reason):
         print("Diagnostic capture failed:", error)
 
 
+def validate(records):
+    if len(records) != 10:
+        raise RuntimeError(
+            f"Expected 10 officers; found {len(records)}."
+        )
+
+    for index, officer in enumerate(records, start=1):
+        if not all([
+            officer["name"],
+            officer["agency"],
+            officer["eow"],
+            officer["photo"]
+        ]):
+            raise RuntimeError(
+                f"Officer {index} has missing information."
+            )
+
+        if not re.search(
+            r"\b\d{4}\b",
+            officer["eow"]
+        ):
+            raise RuntimeError(
+                f"Officer {index} has an invalid EOW date."
+            )
+
+
 def main():
+    print("Starting ODMP homepage update.")
+
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(
             headless=True
@@ -312,53 +169,56 @@ def main():
         page = context.new_page()
 
         try:
-            soup = browse(page, BASE)
-            urls = homepage_links(soup)
-
-            print(
-                "Homepage officer links found:",
-                len(urls)
+            response = page.goto(
+                BASE,
+                wait_until="domcontentloaded",
+                timeout=45000
             )
 
-            if len(urls) != 10:
+            if response and response.status >= 400:
+                raise RuntimeError(
+                    f"ODMP HTTP error: {response.status}"
+                )
+
+            # ODMP renders its cards using JavaScript.
+            page.locator(
+                "app-officercard"
+            ).first.wait_for(
+                state="attached",
+                timeout=30000
+            )
+
+            page.wait_for_timeout(3000)
+
+            soup = BeautifulSoup(
+                page.content(),
+                "html.parser"
+            )
+
+            records = collect_cards(soup)
+
+            print(
+                "Valid homepage cards found:",
+                len(records)
+            )
+
+            if len(records) != 10:
                 save_diagnostics(
                     page,
-                    f"Expected 10 officer links, "
-                    f"found {len(urls)}."
+                    "Could not collect 10 valid officer cards."
                 )
 
-                raise RuntimeError(
-                    f"Found {len(urls)} homepage "
-                    "officer links, expected exactly 10. "
-                    "Existing data preserved."
-                )
-
-            records = []
-
-            for url in urls:
-                print("Retrieving:", url)
-
-                try:
-                    record = extract(page, url)
-                    records.append(record)
-
-                except Exception as error:
-                    save_diagnostics(
-                        page,
-                        f"Officer extraction failed: {error}"
-                    )
-                    raise
+            validate(records)
 
         except Exception as error:
-            print("ODMP update failed:", error)
+            save_diagnostics(
+                page,
+                f"Update failed: {error}"
+            )
             raise
 
         finally:
             browser.close()
-
-    with requests.Session() as session:
-        for record in records:
-            save_image(session, record)
 
     payload = {
         "source": BASE,
@@ -368,9 +228,9 @@ def main():
         "officers": records
     }
 
-    temporary_file = DATA.with_suffix(".tmp")
+    temporary = DATA.with_suffix(".tmp")
 
-    temporary_file.write_text(
+    temporary.write_text(
         json.dumps(
             payload,
             indent=2,
@@ -379,12 +239,16 @@ def main():
         encoding="utf-8"
     )
 
-    temporary_file.replace(DATA)
+    temporary.replace(DATA)
 
-    print("Successfully updated 10 memorials.")
+    print("SUCCESS: Updated 10 ODMP officers.")
 
-    for record in records:
-        print("-", record["name"])
+    for index, officer in enumerate(records, start=1):
+        print(
+            f"{index}. {officer['name']} | "
+            f"{officer['agency']} | "
+            f"EOW: {officer['eow']}"
+        )
 
 
 if __name__ == "__main__":
