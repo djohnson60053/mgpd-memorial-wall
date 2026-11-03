@@ -1,11 +1,10 @@
 
-"""MGPD ODMP Memorial Wall daily updater.
+"""MGPD ODMP Memorial Wall updater.
 
-Reads the first 10 officer cards from the ODMP homepage.
-Does not invent officer information.
-Preserves the existing feed if an update fails.
+Collects the first 10 homepage officer cards and matches them
+to ODMP incident records. Preserves existing data on failure.
 
-Confirm ODMP permission before automated use or redistribution.
+Automated access and content reuse require ODMP authorization.
 """
 
 import json
@@ -14,10 +13,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
+import requests
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 
 BASE = "https://www.odmp.org/"
+FEED = "https://www.odmp.org/get/get_recent"
 OUT = Path("docs")
 DATA = OUT / "memorials.json"
 
@@ -25,31 +26,42 @@ OUT.mkdir(parents=True, exist_ok=True)
 
 
 def clean(element):
-    if element is None:
-        return ""
-    return element.get_text(" ", strip=True)
+    return element.get_text(" ", strip=True) if element else ""
 
 
-def valid_photo(url):
-    if not url:
-        return ""
-
-    url = urljoin(BASE, url)
-    parsed = urlparse(url)
-
-    if parsed.scheme != "https":
-        return ""
-
-    if parsed.netloc not in ("odmp.org", "www.odmp.org"):
-        return ""
-
-    return url
+def officer_id_from_photo(photo):
+    match = re.search(
+        r"/media/image/officer/(\d+)/",
+        photo or ""
+    )
+    return match.group(1) if match else None
 
 
-def collect_cards(soup):
-    """Read officer cards in their homepage DOM order."""
+def homepage_officers(page):
+    response = page.goto(
+        BASE,
+        wait_until="domcontentloaded",
+        timeout=45000
+    )
 
-    records = []
+    if response and response.status >= 400:
+        raise RuntimeError(
+            f"Homepage HTTP {response.status}"
+        )
+
+    page.locator("app-officercard").first.wait_for(
+        state="attached",
+        timeout=30000
+    )
+
+    page.wait_for_timeout(3000)
+
+    soup = BeautifulSoup(
+        page.content(),
+        "html.parser"
+    )
+
+    officers = []
     seen = set()
 
     for card in soup.select("app-officercard"):
@@ -64,54 +76,186 @@ def collect_cards(soup):
         photo = ""
 
         if image:
-            photo = valid_photo(
+            photo = urljoin(
+                BASE,
                 image.get("src")
                 or image.get("data-src")
                 or ""
             )
 
-        if not (name and agency and eow and photo):
-            continue
+        officer_id = officer_id_from_photo(photo)
 
-        # Use the officer's photograph URL as a unique key.
-        # The carousel may contain duplicate cards.
-        officer_id = photo
+        if not all([
+            name, agency, eow, photo, officer_id
+        ]):
+            continue
 
         if officer_id in seen:
             continue
 
         seen.add(officer_id)
 
-        records.append({
+        officers.append({
+            "id": officer_id,
             "name": name,
             "agency": agency,
             "eow": eow,
-            "photo": photo,
-            "story": (
-                "We honor this officer's life, "
-                "service, and sacrifice. "
-                "Visit ODMP.org for the full memorial."
-            ),
-            "url": BASE
+            "photo": photo
         })
 
-        if len(records) == 10:
+        if len(officers) == 10:
             break
 
-    return records
+    return officers
 
 
-def save_diagnostics(page, reason):
-    print("DIAGNOSTIC:", reason)
-    print("Current URL:", page.url)
+def get_incident_records():
+    response = requests.get(
+        FEED,
+        timeout=45,
+        headers={
+            "Accept": "application/json"
+        }
+    )
+
+    response.raise_for_status()
+    payload = response.json()
+
+    if isinstance(payload, list):
+        records = payload
+    elif isinstance(payload, dict):
+        records = payload.get("data") or []
+    else:
+        records = []
+
+    if not isinstance(records, list):
+        raise RuntimeError(
+            "Unexpected ODMP incident data format."
+        )
+
+    return {
+        str(record["id"]): record
+        for record in records
+        if isinstance(record, dict)
+        and record.get("id") is not None
+    }
+
+
+def short_story(description):
+    """Use a short incident excerpt, not the full biography."""
+
+    description = re.sub(
+        r"\s+",
+        " ",
+        description or ""
+    ).strip()
+
+    if not description:
+        return ""
+
+    sentences = re.split(
+        r"(?<=[.!?])\s+",
+        description
+    )
+
+    story = ""
+
+    for sentence in sentences:
+        candidate = (
+            story + " " + sentence
+        ).strip()
+
+        if len(candidate) > 330:
+            break
+
+        story = candidate
+
+        if len(story) >= 150:
+            break
+
+    if not story:
+        words = description.split()
+        story = " ".join(words[:35]).rstrip(
+            " ,;:"
+        )
+
+        if len(words) > 35:
+            story += "…"
+
+    return story
+
+
+def build_records(homepage, incidents):
+    result = []
+
+    for officer in homepage:
+        record = incidents.get(officer["id"])
+
+        if not record:
+            raise RuntimeError(
+                "No incident record for "
+                + officer["name"]
+            )
+
+        incident = record.get(
+            "incident_description"
+        ) or ""
+
+        story = short_story(incident)
+
+        if not story:
+            raise RuntimeError(
+                "Missing incident story for "
+                + officer["name"]
+            )
+
+        full_name = (
+            record.get("full_name") or ""
+        ).strip()
+
+        homepage_name = officer["name"].lower()
+
+        # Verify that the ID corresponds to the
+        # same officer, not another incident record.
+        if full_name:
+            last_name = full_name.split()[-1].lower()
+
+            if last_name not in homepage_name:
+                raise RuntimeError(
+                    "Officer identity mismatch: "
+                    + officer["name"]
+                )
+
+        memorial_path = record.get("url") or ""
+
+        if not re.match(
+            r"^/officer/\d+",
+            memorial_path
+        ):
+            raise RuntimeError(
+                "Missing memorial URL for "
+                + officer["name"]
+            )
+
+        result.append({
+            "name": officer["name"],
+            "agency": officer["agency"],
+            "eow": officer["eow"],
+            "photo": officer["photo"],
+            "story": story,
+            "url": urljoin(BASE, memorial_path)
+        })
+
+    return result
+
+
+def save_diagnostics(page, message):
+    print("DIAGNOSTIC:", message)
 
     try:
-        print("Page title:", page.title())
-
         page.screenshot(
             path=str(OUT / "odmp-debug.png"),
-            full_page=True,
-            timeout=15000
+            full_page=True
         )
 
         (OUT / "odmp-debug.html").write_text(
@@ -119,106 +263,54 @@ def save_diagnostics(page, reason):
             encoding="utf-8"
         )
 
-        print("Diagnostic files saved.")
-
     except Exception as error:
         print("Diagnostic capture failed:", error)
 
 
-def validate(records):
-    if len(records) != 10:
-        raise RuntimeError(
-            f"Expected 10 officers; found {len(records)}."
-        )
-
-    for index, officer in enumerate(records, start=1):
-        if not all([
-            officer["name"],
-            officer["agency"],
-            officer["eow"],
-            officer["photo"]
-        ]):
-            raise RuntimeError(
-                f"Officer {index} has missing information."
-            )
-
-        if not re.search(
-            r"\b\d{4}\b",
-            officer["eow"]
-        ):
-            raise RuntimeError(
-                f"Officer {index} has an invalid EOW date."
-            )
-
-
 def main():
-    print("Starting ODMP homepage update.")
+    print("Collecting ODMP homepage officers.")
 
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(
             headless=True
         )
 
-        context = browser.new_context(
+        page = browser.new_page(
             viewport={
                 "width": 1440,
                 "height": 900
             }
         )
 
-        page = context.new_page()
-
         try:
-            response = page.goto(
-                BASE,
-                wait_until="domcontentloaded",
-                timeout=45000
-            )
+            homepage = homepage_officers(page)
 
-            if response and response.status >= 400:
+            if len(homepage) != 10:
                 raise RuntimeError(
-                    f"ODMP HTTP error: {response.status}"
+                    f"Expected 10 officers, "
+                    f"found {len(homepage)}."
                 )
-
-            # ODMP renders its cards using JavaScript.
-            page.locator(
-                "app-officercard"
-            ).first.wait_for(
-                state="attached",
-                timeout=30000
-            )
-
-            page.wait_for_timeout(3000)
-
-            soup = BeautifulSoup(
-                page.content(),
-                "html.parser"
-            )
-
-            records = collect_cards(soup)
-
-            print(
-                "Valid homepage cards found:",
-                len(records)
-            )
-
-            if len(records) != 10:
-                save_diagnostics(
-                    page,
-                    "Could not collect 10 valid officer cards."
-                )
-
-            validate(records)
 
         except Exception as error:
-            save_diagnostics(
-                page,
-                f"Update failed: {error}"
-            )
+            save_diagnostics(page, str(error))
             raise
 
         finally:
             browser.close()
+
+    print("Retrieving ODMP incident descriptions.")
+
+    incidents = get_incident_records()
+
+    records = build_records(
+        homepage,
+        incidents
+    )
+
+    if len(records) != 10:
+        raise RuntimeError(
+            "Incomplete memorial collection."
+        )
 
     payload = {
         "source": BASE,
@@ -241,13 +333,15 @@ def main():
 
     temporary.replace(DATA)
 
-    print("SUCCESS: Updated 10 ODMP officers.")
+    print("SUCCESS: Updated 10 memorials with stories.")
 
-    for index, officer in enumerate(records, start=1):
+    for index, record in enumerate(
+        records,
+        start=1
+    ):
         print(
-            f"{index}. {officer['name']} | "
-            f"{officer['agency']} | "
-            f"EOW: {officer['eow']}"
+            f"{index}. {record['name']} - "
+            f"{record['story']}"
         )
 
 
