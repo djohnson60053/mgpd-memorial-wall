@@ -126,6 +126,18 @@ def main():
         soup = browse(page, BASE)
         urls = homepage_links(soup)
         if len(urls) != 10:
+            import os
+
+os.makedirs("docs", exist_ok=True)
+
+page.screenshot(
+    path="docs/odmp-debug.png",
+    full_page=True
+)
+
+with open("docs/odmp-debug.html", "w", encoding="utf-8") as f:
+    f.write(page.content())
+
             raise RuntimeError(f'Found {len(urls)} homepage officer links, expected exactly 10. Existing data preserved.')
         records = [extract(page, url) for url in urls]
         browser.close()
