@@ -1,7 +1,15 @@
 {
   "source": "https://www.odmp.org/",
-  "updated_at": "2026-11-05T13:29:00.627234+00:00",
+  "updated_at": "2026-11-06T13:23:09.256838+00:00",
   "officers": [
+    {
+      "name": "Deputy Sheriff Parker Perry",
+      "agency": "Spokane County Sheriff's Office | WA",
+      "eow": "November 4, 2026",
+      "photo": "https://www.odmp.org/media/image/officer/27929/300/c_parker-perry.jpg",
+      "story": "Deputy Sheriff Parker Perry succumbed to gunshot wounds he received while responding to a domestic violence call on November 3, 2026. Around 2:25 p.m., deputies responded to a female victim stating she had been shot at the 18700 block of South Smythe Road in Spangle.",
+      "url": "https://www.odmp.org/officer/27929-deputy-sheriff-parker-perry"
+    },
     {
       "name": "Deputy Sheriff Ryan Terpsma",
       "agency": "Lincoln County Sheriff's Office | MT",
@@ -73,14 +81,6 @@
       "photo": "https://www.odmp.org/media/image/officer/27914/300/trooper-bradley-ritger.jpg",
       "story": "Trooper Brad Ritger succumbed to injuries sustained on September 21, 2026, when he fell from a highway overpass on I-94 in Dunn County after deploying spike strips.",
       "url": "https://www.odmp.org/officer/27914-trooper-bradley-ritger"
-    },
-    {
-      "name": "Officer Brian Liles",
-      "agency": "California Highway Patrol | CA",
-      "eow": "September 28, 2026",
-      "photo": "https://www.odmp.org/media/image/officer/27913/300/c_liles.jpg",
-      "story": "Officer Brian Liles died in a motorcycle collision on State Route 99, north of State Route 190, near Tipton, around 5:11 p.m. He passed away at the scene of the crash, despite life-saving measures.",
-      "url": "https://www.odmp.org/officer/27913-officer-brian-liles"
     }
   ]
 }
