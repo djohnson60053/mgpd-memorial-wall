@@ -1,14 +1,30 @@
 {
   "source": "https://www.odmp.org/",
-  "updated_at": "2026-11-06T13:23:09.256838+00:00",
+  "updated_at": "2026-11-07T13:07:20.827002+00:00",
   "officers": [
     {
-      "name": "Deputy Sheriff Parker Perry",
+      "name": "Police Agent Nicolas Allen Graham",
+      "agency": "Lakewood Police Department | CO",
+      "eow": "November 5, 2026",
+      "photo": "https://www.odmp.org/media/image/officer/27931/300/c_n-graham.jpg",
+      "story": "Police Agent Nic Graham was shot and killed while responding to a suspicious person near Wadsworth Boulevard and West Colfax Avenue in Lakewood. Around 6:30 p.m., police agents followed a man who they believed to be involved in an earlier hit-and-run incident.",
+      "url": "https://www.odmp.org/officer/27931-police-agent-nicolas-allen-graham"
+    },
+    {
+      "name": "Police Officer Thomas Denton",
+      "agency": "Los Angeles Police Department | CA",
+      "eow": "November 5, 2026",
+      "photo": "https://www.odmp.org/media/image/officer/27930/300/c_thomas-denton.jpg",
+      "story": "Police Officer Thomas Denton died during a training exercise in Huntington Beach around 11:00 a.m. Officer Denton was transported to Orange Coast Medical Center, where he was pronounced deceased.",
+      "url": "https://www.odmp.org/officer/27930-police-officer-thomas-denton"
+    },
+    {
+      "name": "Deputy Sheriff Mason Acheson",
       "agency": "Spokane County Sheriff's Office | WA",
       "eow": "November 4, 2026",
-      "photo": "https://www.odmp.org/media/image/officer/27929/300/c_parker-perry.jpg",
-      "story": "Deputy Sheriff Parker Perry succumbed to gunshot wounds he received while responding to a domestic violence call on November 3, 2026. Around 2:25 p.m., deputies responded to a female victim stating she had been shot at the 18700 block of South Smythe Road in Spangle.",
-      "url": "https://www.odmp.org/officer/27929-deputy-sheriff-parker-perry"
+      "photo": "https://www.odmp.org/media/image/officer/27932/300/c_acheson.jpg",
+      "story": "Deputy Sheriff Mason Acheson succumbed to gunshot wounds he received while responding to a domestic violence call on November 3, 2026. Around 2:25 p.m., deputies responded to a female victim stating she had been shot at the 18700 block of South Smythe Road in Spangle.",
+      "url": "https://www.odmp.org/officer/27932-deputy-sheriff-mason-acheson"
     },
     {
       "name": "Deputy Sheriff Ryan Terpsma",
@@ -65,22 +81,6 @@
       "photo": "https://www.odmp.org/media/image/officer/27917/300/c_morris-kevin-.jpg",
       "story": "Homicide Agent Kevin Morris was killed when a wrong-way driver crashed into his vehicle on Interstate 95 south of State Road 46 in Titusville.",
       "url": "https://www.odmp.org/officer/27917-homicide-agent-kevin-morris"
-    },
-    {
-      "name": "Sergeant Shane Seiber",
-      "agency": "Philadelphia Police Department | PA",
-      "eow": "October 10, 2026",
-      "photo": "https://www.odmp.org/media/image/officer/27916/300/c_seiber_official.jpg",
-      "story": "Sergeant Shane Seiber was shot and killed while responding to a disturbance call in West Philadelphia, near the 100 block of North 52nd Street at approximately 1:00 am.",
-      "url": "https://www.odmp.org/officer/27916-sergeant-shane-seiber"
-    },
-    {
-      "name": "Trooper Bradley Ritger",
-      "agency": "Wisconsin State Patrol | WI",
-      "eow": "October 2, 2026",
-      "photo": "https://www.odmp.org/media/image/officer/27914/300/trooper-bradley-ritger.jpg",
-      "story": "Trooper Brad Ritger succumbed to injuries sustained on September 21, 2026, when he fell from a highway overpass on I-94 in Dunn County after deploying spike strips.",
-      "url": "https://www.odmp.org/officer/27914-trooper-bradley-ritger"
     }
   ]
 }
