@@ -1,7 +1,15 @@
 {
   "source": "https://www.odmp.org/",
-  "updated_at": "2026-11-07T13:07:20.827002+00:00",
+  "updated_at": "2026-11-08T13:07:11.407106+00:00",
   "officers": [
+    {
+      "name": "Deputy Sheriff Parker Perry",
+      "agency": "Spokane County Sheriff's Office | WA",
+      "eow": "November 7, 2026",
+      "photo": "https://www.odmp.org/media/image/officer/27929/300/c_parker-perry.jpg",
+      "story": "Deputy Sheriff Parker Perry succumbed to gunshot wounds he received while responding to a domestic violence call on November 3, 2026. Around 2:25 p.m., deputies responded to a female victim stating she had been shot at the 18700 block of South Smythe Road in Spangle.",
+      "url": "https://www.odmp.org/officer/27929-deputy-sheriff-parker-perry"
+    },
     {
       "name": "Police Agent Nicolas Allen Graham",
       "agency": "Lakewood Police Department | CO",
@@ -73,14 +81,6 @@
       "photo": "https://www.odmp.org/media/image/officer/27918/300/frank-katherine.jpg",
       "story": "Deputy Sheriff Katherine Frank succumbed to injuries resulting from a shooting near the 2900 block of South Keyrell Drive in Sioux Falls, three days prior.",
       "url": "https://www.odmp.org/officer/27918-deputy-sheriff-katherine-frank"
-    },
-    {
-      "name": "Homicide Agent Kevin Morris",
-      "agency": "Brevard County Sheriff's Office | FL",
-      "eow": "October 11, 2026",
-      "photo": "https://www.odmp.org/media/image/officer/27917/300/c_morris-kevin-.jpg",
-      "story": "Homicide Agent Kevin Morris was killed when a wrong-way driver crashed into his vehicle on Interstate 95 south of State Road 46 in Titusville.",
-      "url": "https://www.odmp.org/officer/27917-homicide-agent-kevin-morris"
     }
   ]
 }
