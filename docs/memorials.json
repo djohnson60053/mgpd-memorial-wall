@@ -1,7 +1,15 @@
 {
   "source": "https://www.odmp.org/",
-  "updated_at": "2026-11-25T13:39:28.090991+00:00",
+  "updated_at": "2026-11-26T13:38:38.316730+00:00",
   "officers": [
+    {
+      "name": "Corporal Joshua Kerr",
+      "agency": "Raytown Police Department | MO",
+      "eow": "November 24, 2026",
+      "photo": "https://www.odmp.org/media/image/officer/27940/300/c_Kerr.jpg",
+      "story": "Corporal Joshua Kerr was shot and killed while serving a warrant near the intersection of East 84th Street and Lane Avenue in Raytown just before 2:00 pm.",
+      "url": "https://www.odmp.org/officer/27940-corporal-joshua-kerr"
+    },
     {
       "name": "Police Officer Christina Lozano",
       "agency": "Southside Independent School District Police Department | TX",
@@ -73,14 +81,6 @@
       "photo": "https://www.odmp.org/media/image/officer/27928/300/c_j_smith.png",
       "story": "Detective Jeffrey Smith suffered a fatal heart attack while engaged in a foot pursuit on Highway 19 near Rocky Top Road in Cherokee, North Carolina. Detective Smith and another officer pulled a struggling suspect from the Oconaluftee River and up the riverbed when Detective Smith collapsed.",
       "url": "https://www.odmp.org/officer/27928-detective-jeffrey-lee-smith"
-    },
-    {
-      "name": "Deputy Sheriff Adam Sherifi",
-      "agency": "Van Zandt County Sheriff's Office | TX",
-      "eow": "October 20, 2026",
-      "photo": "https://www.odmp.org/media/image/officer/27923/300/c_sherifi.jpg",
-      "story": "Deputy Sheriff Adam Sherifi was shot and killed while serving a felony warrant at the 4300 block of State Highway 198 in Van Zandt County. Deputy Sherifi was assisting Canton police officers serving outstanding warrants for aggravated assault and aggravated assault on a peace officer.",
-      "url": "https://www.odmp.org/officer/27923-deputy-sheriff-adam-sherifi"
     }
   ]
 }
